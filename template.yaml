@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SAM template - monitor RSS feeds for keywords, when a match is found, it sends a slack notification
+Parameters:
+  SlackWebhookURL:
+    Type: String
+    Description: Slack webhook url for sending notifications
+  ArtefactsS3Bucket:
+    Type: String
+    Description: S3 Bucket for artefacts
+  ArtefactsS3KeyPrefix:
+    Type: String
+    Description: Prefix for the objects in the ArtefactsS3Bucket
+Resources:
+  monitorRSSFeedsForKeywordsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: This function monitors RSS feeds for keywords, when a match is found, it sends a slack notification.
+      Handler: src/monitor_rss_feeds_for_keywords.lambda_handler
+      Runtime: python3.7
+      Timeout: 300
+      Events:
+        CWEventsSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(0/5 * * * ? *)"
+            Name: CheckRSSFeedsForKeywords
+            Description: Check RSS feeds for keywords
+            Enabled: True
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      - S3ReadPolicy:
+          BucketName: !Ref ArtefactsS3Bucket
+      - S3WritePolicy:
+          BucketName: !Ref ArtefactsS3Bucket
+      Environment:
+        Variables:
+          SLACK_WEBHOOK_URL: !Ref SlackWebhookURL
+          ARTEFACTS_S3_BUCKET: !Ref ArtefactsS3Bucket
+          ARTEFACTS_S3_KEY_PREFIX: !Ref ArtefactsS3KeyPrefix
